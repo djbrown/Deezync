@@ -1,0 +1,113 @@
+<!--
+Copyright 2016 Daniel Brown.
+All rights reserved.
+-->
+<!DOCTYPE html >
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Deezync</title>
+    <link rel="stylesheet" href="css/deezync.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+    <script src="http://code.jquery.com/jquery-3.1.1.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="http://cdn-files.deezer.com/js/min/dz.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.3.0/jsmediatags.min.js"></script>
+    <script src="js/deezync.js"></script>
+</head>
+<body>
+<nav class="navbar navbar-default">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse"
+                    data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Deezync</a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li class="active"><a href="index.html">Start</a></li>
+            </ul>
+            <ul id="nav-signed-out" class="nav navbar-nav navbar-right">
+                <li>
+                    <button id="button-sign-in" class="btn navbar-btn btn-primary">Sign In</button>
+                </li>
+            </ul>
+            <ul id="nav-signed-in" class="nav navbar-nav navbar-right">
+                <li><a id="user-profile-link" href="#" class=""></a></li>
+                <li><img id="user-profile-image" src="#" width="50" height="50" alt="profile picture"></li>
+                <li>
+                    <button id="button-sign-out" class="btn navbar-btn btn-default">Sign Out</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div id="content" class="container-fluid">
+    <noscript>
+        <div class="alert alert-danger">
+            <a href="#" class="close" data-dismiss="alert">&times;</a>
+            <strong>JavaScript is disabled</strong> in your browser.
+            For full functionality of this site it is necessary to enable JavaScript.
+            Here are the <a href="http://www.enable-javascript.com/"
+                            target="_blank">instructions how to enable JavaScript in your web browser</a>.
+        </div>
+    </noscript>
+    <div id="dz-root"></div>
+    <div id="alert"></div>
+    <div class="row">
+        <div class="col-sm-11">
+            <input id="file-input" class="form-control" type="file" accept="audio/*" multiple="multiple"/>
+        </div>
+        <div class="col-sm-1">
+            <span id="loading-animation" class="glyphicon glyphicon-refresh"></span>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-6"><h1>MP3s</h1></div>
+        <div class="col-lg-6"><h1>Results</h1></div>
+    </div>
+    <div class="row">
+        <div class="col-lg-6">
+            <table class="table table-striped table-hover table-sm">
+                <thead>
+                <tr>
+                    <th>Synced</th>
+                    <th>File&nbsp;Name</th>
+                    <th>Artist</th>
+                    <th>Title</th>
+                    <th>Album</th>
+                    <th>Player</th>
+                </tr>
+                </thead>
+                <tbody id="mp3-list"></tbody>
+            </table>
+        </div>
+        <div class="col-lg-6">
+            <table class="table table-striped table-hover table-sm">
+                <thead>
+                <tr>
+                    <th>Like</th>
+                    <th>Artist</th>
+                    <th>Title</th>
+                    <th>Album</th>
+                    <th>Duration</th>
+                    <th>Playback</th>
+                </tr>
+                </thead>
+                <tbody id="result-list"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<footer class="footer">
+    <div class="container">
+        <p class="text-muted">&copy; Copyright 2016 Daniel J. Brown | all rights reserved</p>
+    </div>
+</footer>
+</body>
+</html>
