@@ -16,7 +16,7 @@ $(function () {
     $('#button-sign-in').click(signIn);
 
     function signIn() {
-        DZ.login(signInCallback, {perms: 'basic_access,manage_library'});
+        DZ.login(signInCallback, {perms: 'basic_access,manage_library,delete_library'});
     }
 
     function signInCallback(response) {
@@ -93,7 +93,6 @@ $(function () {
         this.artist = tags.artist;
         this.title = tags.title;
         this.album = tags.album;
-        this.trackNumer = tags.track;
         this.genre = tags.genre;
         this.year = tags.year;
     }
@@ -102,7 +101,7 @@ $(function () {
         var $mp3Row = $('<tr>');
 
         var $matchIcon = $('<span>');
-        $matchIcon.addClass('glyphicon glyphicon-remove');
+        $matchIcon.addClass('match-icon glyphicon glyphicon-remove');
         var $matchIconCell = $('<td>');
         $matchIconCell.append($matchIcon);
         $mp3Row.append($matchIconCell);
@@ -131,13 +130,13 @@ $(function () {
         $mp3Row.append($fileName);
 
         $mp3Row.click(function () {
-            if ($(this).hasClass('table-info')) {
+            if ($mp3Row.hasClass('current-mp3')) {
                 return;
             }
             $('#result-list').empty();
-            requestResults(mp3, $matchIcon);
-            $('.table-info').removeClass('table-info');
-            $mp3Row.addClass('table-info');
+            $('.current-mp3').removeClass('current-mp3');
+            $mp3Row.addClass('current-mp3');
+            requestResults(mp3);
         });
 
         $('#mp3-list').append($mp3Row);
@@ -150,8 +149,8 @@ $(function () {
         }
     }
 
-    // Search for relevant songs
-    function requestResults(mp3, $matchIcon) {
+    // Search for matching songs
+    function requestResults(mp3) {
         var query = '';
         if (mp3.artist) {
             query += ' artist:"' + mp3.artist + '"';
@@ -162,89 +161,131 @@ $(function () {
         if (mp3.album) {
             query += ' album:"' + mp3.album + '"';
         }
-        DZ.api('/search', 'GET', {q: query}, createResultCallback($matchIcon));
+        DZ.api('/search/track', {q: query}, resultsCallback);
     }
 
-    function createResultCallback($matchIcon) {
-        return function (response) {
-            var results = response.data;
-            for (var resultID = 0; resultID < results.length; resultID++) {
-                var result = results[resultID];
-                var song = new Song(result);
-                displaySong(song, $matchIcon);
-            }
-        }
-    }
-
-    function Song(result) {
-        this.ID = result.id;
-        this.artist = result.artist.name;
-        this.title = result.title;
-        this.album = result.album.title;
-        this.duration = result.duration;
-        this.preview = result.preview;
-        // this.trackNumber = result.track_position;
+    function resultsCallback(response) {
+        response.data.forEach(function (result) {
+            displayResult(result);
+        });
+        updateIcons();
     }
 
     // Display search results
-    function displaySong(song, $matchIcon) {
-        var $resultRow = $('<tr>');
-
-        var $likeIcon = $('<span>');
-        $likeIcon.addClass('match-icon glyphicon glyphicon-heart-empty');
-        var $likeButton = $('<button>');
-        $likeButton.addClass('btn btn-default match-icon-button');
+    function displayResult(result) {
+        var $likeIcon = elem('span');
+        $likeIcon.addClass('like-icon glyphicon glyphicon-heart-empty');
+        var $likeButton = elem('button');
+        $likeButton.addClass('like-button btn btn-default');
+        $likeButton.attr('data-track-id', result.id);
+        $likeButton.attr('data-like-action', 'like');
+        $likeButton.click(likeButtonClicked);
         $likeButton.append($likeIcon);
-        $likeButton.click(createLikeFunction(song.ID, $matchIcon, $likeIcon));
-        var $likeCell = $('<td>');
-        $likeCell.append($likeButton);
-        $resultRow.append($likeCell);
+        var $like = elem('td');
+        $like.append($likeButton);
 
-        var $artist = $('<td>');
-        $artist.text(song.artist);
-        $resultRow.append($artist);
+        var $artist = elem('td');
+        $artist.text(result.artist.name);
 
-        var $title = $('<td>');
-        $title.text(song.title);
-        $resultRow.append($title);
+        var $title = elem('td');
+        $title.text(result.title);
 
-        var $album = $('<td>');
-        $album.text(song.album);
-        $resultRow.append($album);
+        var $album = elem('td');
+        $album.text(result.album.title);
 
-        var $source = $('<source type="audio/mpeg"/>');
-        $source.attr('src', song.preview);
-        var $audio = $('<audio controls="controls"></audio>');
-        $audio.append($source);
-        var $playback = $('<td></td>');
+        var $audio = elem('audio');
+        $audio.attr('controls', 'controls');
+        $audio.attr('src', result.preview);
+        var $playback = elem('td');
         $playback.append($audio);
-        $resultRow.append($playback);
 
-        var minutes = Math.floor(song.duration / 60);
-        var seconds = song.duration % 60;
-        var $duration = $('<td></td>');
+        var minutes = Math.floor(result.duration / 60);
+        var seconds = result.duration % 60;
+        var $duration = elem('td');
         $duration.text(minutes + ':' + seconds);
+
+        var $resultRow = elem('tr');
+        $resultRow.append($like);
+        $resultRow.append($artist);
+        $resultRow.append($title);
+        $resultRow.append($album);
+        $resultRow.append($playback);
         $resultRow.append($duration);
 
         $('#result-list').append($resultRow);
     }
 
-    function createLikeFunction(songID, $matchIcon, $likeIcon) {
-        return function () {
-            if ($matchIcon.hasClass('glyphicon-ok')) {
-                DZ.api('/user/me/tracks', 'DELETE', {track_id: songID}, createLikeCallback($matchIcon, $likeIcon));
-            } else {
-                DZ.api('/user/me/tracks', 'POST', {track_id: songID}, createLikeCallback($matchIcon, $likeIcon));
+    function likeButtonClicked() {
+        var trackID = $(this).attr('data-track-id');
+        if (!trackID) {
+            return;
+        }
+
+        var likeAction = $(this).attr('data-like-action');
+        var method;
+        if (likeAction === 'like') {
+            method = 'post';
+        } else if (likeAction === 'dislike') {
+            method = 'delete';
+        } else {
+            return;
+        }
+
+        DZ.api('/user/me/tracks', method, {track_id: trackID}, updateIcons);
+    }
+
+    function updateIcons() {
+        DZ.api('/user/me/tracks?limit=2000', function (result) {
+            var favorites = result.data;
+            var isMatched = false;
+            var $likeButtons = $('.like-button');
+            $likeButtons.each(function (index, likeButton) {
+                var $likeButton = $(likeButton);
+                var resultID = $likeButton.attr('data-track-id');
+                var isFav = isFavorite(resultID, favorites);
+                var $likeIcon = $likeButton.find('.like-icon');
+                setLiked(isFav, $likeIcon, $likeButton);
+                isMatched = isMatched || isFav;
+            });
+            var $matchIcon = $('.current-mp3 .match-icon');
+            setMatched(isMatched, $matchIcon);
+        });
+    }
+
+    function isFavorite(resultID, favorites) {
+        var isFav = false;
+        favorites.forEach(function (favorite) {
+            if (resultID == favorite.id) {
+                return isFav = true;
             }
+        });
+        return isFav;
+    }
+
+    function setLiked(isLiked, $likeIcon, $likeButton) {
+        if (isLiked) {
+            $likeIcon.removeClass('glyphicon-heart-empty');
+            $likeIcon.addClass('glyphicon-heart');
+            $likeButton.attr('data-like-action', 'dislike');
+        } else {
+            $likeIcon.removeClass('glyphicon-heart');
+            $likeIcon.addClass('glyphicon-heart-empty');
+            $likeButton.attr('data-like-action', 'like');
         }
     }
 
-    function createLikeCallback($matchIcon, $likeIcon) {
-        return function (response) {
+    function setMatched(isMatched, $matchIcon) {
+        if (isMatched) {
             $matchIcon.removeClass('glyphicon-remove');
             $matchIcon.addClass('glyphicon-ok');
-            $likeIcon.removeClass('glyphicon-heart-empty');
-            $likeIcon.addClass('glyphicon-heart');
-        };
+        } else {
+            $matchIcon.removeClass('glyphicon-ok');
+            $matchIcon.addClass('glyphicon-remove');
+        }
     }
+
+    function elem(element) {
+        return $(document.createElement(element));
+    }
+
 });
