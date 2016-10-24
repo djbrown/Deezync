@@ -56,28 +56,36 @@ $(function () {
     }
 
     // File upload
-    $('#file-input').change(filesUploaded);
+    var $fileInput = $('#file-input');
+    var fileInput = $fileInput[0];
+    $fileInput.change(fileInputChanged);
 
-    var filesRead = 0;
+    var $mp3List = $('#mp3-list');
+    var $resultList = $('#result-list');
+    var $loadingAnimation = $('#loading-animation');
 
-    function filesUploaded() {
-        $('#mp3-list').empty();
-        $('#result-list').empty();
-        $('#loading-animation').css('visibility', 'visible');
+    var mp3s;
+    var currentMP3Index;
 
-        filesRead = 0;
-        var files = $('#file-input')[0].files;
+    function fileInputChanged() {
+        $fileInput.attr('disabled', 'disabled');
+        $loadingAnimation.css('visibility', 'visible');
+        mp3s = [];
+        currentMP3Index = -1;
+        $mp3List.empty();
+        $resultList.empty();
+        var files = fileInput.files;
         for (var fileID = 0; fileID < files.length; fileID++) {
             readFile(files[fileID]);
         }
+        updateProgress();
     }
 
     function readFile(file) {
         jsmediatags.read(file, {
             onSuccess: function (tag) {
                 var mp3 = new MP3(file, tag.tags);
-                displayMP3(mp3);
-                filesRead++;
+                mp3s.push(mp3);
                 updateProgress();
             },
             onError: function (error) {
@@ -88,91 +96,158 @@ $(function () {
 
     function MP3(file, tags) {
         this.file = file;
-
         this.fileName = file.name;
         this.artist = tags.artist;
         this.title = tags.title;
         this.album = tags.album;
         this.genre = tags.genre;
         this.year = tags.year;
+        this.results = [];
+        this.matches = [];
     }
 
-    function displayMP3(mp3) {
-        var $mp3Row = $('<tr>');
+    function updateProgress() {
+        var total = fileInput.files.length;
+        if (mp3s.length === total) {
+            $('#loading-animation').css('visibility', 'hidden');
+            $fileInput.removeAttr('disabled');
+            $(mp3s).each(displayMP3);
+            updateMatches();
+        }
+    }
 
-        var $matchIcon = $('<span>');
+    function displayMP3(mp3Index, mp3) {
+        var $mp3Row = elem('tr');
+        $mp3Row.addClass('mp3-row');
+        $mp3Row.attr('data-mp3-id', mp3Index);
+
+        var $matchIcon = elem('span');
         $matchIcon.addClass('match-icon glyphicon glyphicon-remove');
-        var $matchIconCell = $('<td>');
-        $matchIconCell.append($matchIcon);
-        $mp3Row.append($matchIconCell);
-        var $artist = $('<td>');
 
-        $artist.text(mp3.artist);
-        $mp3Row.append($artist);
-        var $title = $('<td>');
+        var $matchButton = elem('button');
+        $matchButton.attr('type', 'button');
+        $matchButton.attr('data-toggle', 'modal');
+        $matchButton.attr('data-target', '#result-modal');
+        $matchButton.addClass('btn btn-primary');
+        $matchButton.append($matchIcon);
 
-        $title.text(mp3.title);
-        $mp3Row.append($title);
-        var $album = $('<td>');
+        var $match = elem('td');
+        $match.append($matchButton);
+        $mp3Row.append($match);
 
-        $album.text(mp3.album);
-        $mp3Row.append($album);
-        var $audio = $('<audio controls="controls"></audio>');
-
-        var src = URL.createObjectURL(mp3.file);
-        $audio.attr('src', src);
-        var $playback = $('<td>');
-        $playback.append($audio);
-        $mp3Row.append($playback);
-        var $fileName = $('<td>');
-
+        var $fileName = elem('td');
         $fileName.text(mp3.fileName);
         $mp3Row.append($fileName);
 
-        $mp3Row.click(function () {
-            if ($mp3Row.hasClass('current-mp3')) {
-                return;
-            }
-            $('#result-list').empty();
-            $('.current-mp3').removeClass('current-mp3');
-            $mp3Row.addClass('current-mp3');
-            requestResults(mp3);
-        });
+        var $artist = elem('td');
+        $artist.text(mp3.artist);
+        $mp3Row.append($artist);
+
+        var $title = elem('td');
+        $title.text(mp3.title);
+        $mp3Row.append($title);
+
+        var $album = elem('td');
+        $album.text(mp3.album);
+        $mp3Row.append($album);
+
+        var $audio = elem('audio');
+        $audio.attr('controls', 'controls');
+        var src = URL.createObjectURL(mp3.file);
+        $audio.attr('src', src);
+        var $playback = elem('td');
+        $playback.append($audio);
+        $mp3Row.append($playback);
 
         $('#mp3-list').append($mp3Row);
     }
 
-    function updateProgress() {
-        var total = $('#file-input')[0].files.length;
-        if (filesRead === total) {
-            $('#loading-animation').css('visibility', 'hidden');
-        }
-    }
+    var $resultModal = $('#result-modal');
+    $resultModal.on('show.bs.modal', function (e) {
+        var $mp3Row = $(e.relatedTarget).closest('.mp3-row');
+        currentMP3Index = $mp3Row.attr('data-mp3-id');
+        $('.current-mp3-row').removeClass('current-mp3-row');
+        $('[data-mp3-id="' + currentMP3Index + '"').addClass('current-mp3-row');
+        updateMatches();
+        setTimeout(function () {
+            $(".modal-backdrop").addClass("modal-backdrop-fullscreen");
+        }, 0);
+    });
+    $resultModal.on('hidden.bs.modal', function () {
+        $(".modal-backdrop").addClass("modal-backdrop-fullscreen");
+        $resultList.empty();
+    });
 
-    // Search for matching songs
-    function requestResults(mp3) {
-        var query = '';
-        if (mp3.artist) {
-            query += ' artist:"' + mp3.artist + '"';
-        }
-        if (mp3.title) {
-            query += ' track:"' + mp3.title + '"';
-        }
-        if (mp3.album) {
-            query += ' album:"' + mp3.album + '"';
-        }
-        DZ.api('/search/track', {q: query}, resultsCallback);
-    }
+    function updateMatches() {
+        $resultList.empty();
+        DZ.api('/user/me/tracks?limit=2000', function (response) {
+            var favorites = response.data;
+            $('.mp3-row').each(function () {
+                var $mp3Row = $(this);
+                var mp3Index = $mp3Row.attr('data-mp3-id');
+                var mp3 = mp3s[mp3Index];
 
-    function resultsCallback(response) {
-        response.data.forEach(function (result) {
-            displayResult(result);
+                var query = '';
+                if (mp3.artist) {
+                    query += ' artist:"' + mp3.artist + '"';
+                }
+                if (mp3.title) {
+                    query += ' track:"' + mp3.title + '"';
+                }
+                if (mp3.album) {
+                    query += ' album:"' + mp3.album + '"';
+                }
+                DZ.api('/search/track', {q: query}, function (response) {
+                    mp3.results = new Map();
+                    mp3.matches = new Map();
+                    if (!response.data) {
+                        console.log(response);
+                    }
+                    response.data.forEach(function (result) {
+                        var resultID = result.id;
+                        mp3.results.set(resultID, result);
+                        var isLiked = isFavorite(resultID, favorites);
+                        if (isLiked) {
+                            mp3.matches.set(resultID, result);
+                        }
+                        if (currentMP3Index === mp3Index) {
+                            var $resultRow = displayResult(result);
+                            setLiked(isLiked, $resultRow)
+                        }
+                    });
+                    var isMatched = mp3.matches.size !== 0;
+                    setMatched(isMatched, $mp3Row);
+                });
+            });
         });
-        updateIcons();
+    }
+
+    function isFavorite(resultID, favorites) {
+        var isFav = false;
+        favorites.forEach(function (favorite) {
+            if (resultID == favorite.id) {
+                return isFav = true;
+            }
+        });
+        return isFav;
+    }
+
+    function setMatched(isMatched, $mp3Row) {
+        var $matchIcon = $mp3Row.find('.match-icon');
+        if (isMatched) {
+            $matchIcon.removeClass('glyphicon-remove');
+            $matchIcon.addClass('glyphicon-ok');
+        } else {
+            $matchIcon.removeClass('glyphicon-ok');
+            $matchIcon.addClass('glyphicon-remove');
+        }
     }
 
     // Display search results
     function displayResult(result) {
+        var $resultRow = elem('tr');
+        $('#result-list').append($resultRow);
+
         var $likeIcon = elem('span');
         $likeIcon.addClass('like-icon glyphicon glyphicon-heart-empty');
         var $likeButton = elem('button');
@@ -183,36 +258,48 @@ $(function () {
         $likeButton.append($likeIcon);
         var $like = elem('td');
         $like.append($likeButton);
+        $resultRow.append($like);
 
         var $artist = elem('td');
         $artist.text(result.artist.name);
+        $resultRow.append($artist);
 
         var $title = elem('td');
         $title.text(result.title);
+        $resultRow.append($title);
 
         var $album = elem('td');
         $album.text(result.album.title);
+        $resultRow.append($album);
 
         var $audio = elem('audio');
         $audio.attr('controls', 'controls');
         $audio.attr('src', result.preview);
         var $playback = elem('td');
         $playback.append($audio);
+        $resultRow.append($playback);
 
         var minutes = Math.floor(result.duration / 60);
         var seconds = result.duration % 60;
         var $duration = elem('td');
         $duration.text(minutes + ':' + seconds);
-
-        var $resultRow = elem('tr');
-        $resultRow.append($like);
-        $resultRow.append($artist);
-        $resultRow.append($title);
-        $resultRow.append($album);
-        $resultRow.append($playback);
         $resultRow.append($duration);
 
-        $('#result-list').append($resultRow);
+        return $resultRow;
+    }
+
+    function setLiked(isLiked, $resultRow) {
+        var $likeButton = $resultRow.find('.like-button');
+        var $likeIcon = $resultRow.find('.like-icon');
+        if (isLiked) {
+            $likeIcon.removeClass('glyphicon-heart-empty');
+            $likeIcon.addClass('glyphicon-heart');
+            $likeButton.attr('data-like-action', 'dislike');
+        } else {
+            $likeIcon.removeClass('glyphicon-heart');
+            $likeIcon.addClass('glyphicon-heart-empty');
+            $likeButton.attr('data-like-action', 'like');
+        }
     }
 
     function likeButtonClicked() {
@@ -231,61 +318,12 @@ $(function () {
             return;
         }
 
-        DZ.api('/user/me/tracks', method, {track_id: trackID}, updateIcons);
-    }
-
-    function updateIcons() {
-        DZ.api('/user/me/tracks?limit=2000', function (result) {
-            var favorites = result.data;
-            var isMatched = false;
-            var $likeButtons = $('.like-button');
-            $likeButtons.each(function (index, likeButton) {
-                var $likeButton = $(likeButton);
-                var resultID = $likeButton.attr('data-track-id');
-                var isFav = isFavorite(resultID, favorites);
-                var $likeIcon = $likeButton.find('.like-icon');
-                setLiked(isFav, $likeIcon, $likeButton);
-                isMatched = isMatched || isFav;
-            });
-            var $matchIcon = $('.current-mp3 .match-icon');
-            setMatched(isMatched, $matchIcon);
-        });
-    }
-
-    function isFavorite(resultID, favorites) {
-        var isFav = false;
-        favorites.forEach(function (favorite) {
-            if (resultID == favorite.id) {
-                return isFav = true;
-            }
-        });
-        return isFav;
-    }
-
-    function setLiked(isLiked, $likeIcon, $likeButton) {
-        if (isLiked) {
-            $likeIcon.removeClass('glyphicon-heart-empty');
-            $likeIcon.addClass('glyphicon-heart');
-            $likeButton.attr('data-like-action', 'dislike');
-        } else {
-            $likeIcon.removeClass('glyphicon-heart');
-            $likeIcon.addClass('glyphicon-heart-empty');
-            $likeButton.attr('data-like-action', 'like');
-        }
-    }
-
-    function setMatched(isMatched, $matchIcon) {
-        if (isMatched) {
-            $matchIcon.removeClass('glyphicon-remove');
-            $matchIcon.addClass('glyphicon-ok');
-        } else {
-            $matchIcon.removeClass('glyphicon-ok');
-            $matchIcon.addClass('glyphicon-remove');
-        }
+        DZ.api('/user/me/tracks', method, {track_id: trackID}, updateMatches);
     }
 
     function elem(element) {
         return $(document.createElement(element));
     }
 
-});
+})
+;
