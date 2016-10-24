@@ -21,7 +21,7 @@ $(function () {
 
     function signInCallback(response) {
         if (response.authResponse && response.status === 'connected') {
-            DZ.api('/user/me', userCallback);
+            scheduleApiCall('/user/me', 'get', null, userCallback);
             $('#nav-signed-out').hide();
             $('#nav-signed-in').show();
         }
@@ -180,7 +180,11 @@ $(function () {
 
     function updateMatches() {
         $resultList.empty();
-        DZ.api('/user/me/tracks?limit=2000', function (response) {
+        scheduleApiCall('/user/me/tracks?limit=2000', 'get', null, function (response) {
+            if (response.error || !response.data) {
+                console.log(response);
+                return;
+            }
             var favorites = response.data;
             $('.mp3-row').each(function () {
                 var $mp3Row = $(this);
@@ -197,11 +201,12 @@ $(function () {
                 if (mp3.album) {
                     query += ' album:"' + mp3.album + '"';
                 }
-                DZ.api('/search/track', {q: query}, function (response) {
+                scheduleApiCall('/search/track', 'get', {q: query}, function (response) {
                     mp3.results = new Map();
                     mp3.matches = new Map();
                     if (!response.data) {
                         console.log(response);
+                        return;
                     }
                     response.data.forEach(function (result) {
                         var resultID = result.id;
@@ -318,12 +323,42 @@ $(function () {
             return;
         }
 
-        DZ.api('/user/me/tracks', method, {track_id: trackID}, updateMatches);
+        scheduleApiCall('/user/me/tracks', method, {track_id: trackID}, updateMatches);
     }
 
     function elem(element) {
         return $(document.createElement(element));
     }
 
-})
-;
+    var callQueue = [];
+    var currentCallCount = 0;
+
+    setInterval(checkQueue, 10);
+
+    function checkQueue() {
+        console.log(callQueue.length + ' ' + currentCallCount);
+        if (currentCallCount >= 50) {
+            return;
+        }
+        var call = callQueue.shift();
+        if (call) {
+            call();
+        }
+    }
+
+    function scheduleApiCall(path, method, args, callback) {
+        var call = function () {
+            currentCallCount++;
+            DZ.api(path, method, args, function (response) {
+                setTimeout(decrementCallCount, 5000);
+                callback(response);
+            });
+        };
+        callQueue.push(call);
+    }
+
+    function decrementCallCount() {
+        currentCallCount--;
+    }
+
+});
