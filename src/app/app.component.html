@@ -1,8 +1,45 @@
-<div *ngIf="user; else nouser">
-  <p>Username: {{ user.name }}</p>
-</div>
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav
+    #drawer
+    class="sidenav"
+    fixedInViewport
+    [attr.role]="(isHandset$ | async) ? 'dialog' : 'navigation'"
+    [mode]="(isHandset$ | async) ? 'over' : 'side'"
+    [opened]="(isHandset$ | async) === false"
+  >
+    <mat-toolbar>Menu</mat-toolbar>
+    <mat-nav-list>
+      <a mat-list-item href="#">Link 1</a>
+      <a mat-list-item href="#">Link 2</a>
+      <a mat-list-item href="#">Link 3</a>
+    </mat-nav-list>
+  </mat-sidenav>
+  <mat-sidenav-content>
+    <mat-toolbar color="primary">
+      <button
+        type="button"
+        aria-label="Toggle sidenav"
+        mat-icon-button
+        (click)="drawer.toggle()"
+        *ngIf="isHandset$ | async"
+      >
+        <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
+      </button>
+      <span id="title">{{ title }}</span>
+    </mat-toolbar>
+  </mat-sidenav-content>
+  <div *ngIf="user; else nouser">
+    <p>Username: {{ user.name }}</p>
+    <label class="mdc-text-field mdc-text-field--filled username">
+      <span class="mdc-text-field__ripple"></span>
+      <input type="text" class="mdc-text-field__input" aria-labelledby="username-label" name="username" />
+      <span class="mdc-floating-label" id="username-label">Username</span>
+      <span class="mdc-line-ripple"></span>
+    </label>
+  </div>
 
-<ng-template #nouser>
-  <div>You're not logged in yet...</div>
-  <button mat-button (click)="login()">Login</button>
-</ng-template>
+  <ng-template #nouser>
+    <div>You're not logged in yet...</div>
+    <button mat-button (click)="login()">Login</button>
+  </ng-template>
+</mat-sidenav-container>
