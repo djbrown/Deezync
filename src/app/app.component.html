@@ -27,19 +27,13 @@
       </button>
       <span id="title">{{ title }}</span>
     </mat-toolbar>
-  </mat-sidenav-content>
-  <div *ngIf="user; else nouser">
-    <p>Username: {{ user.name }}</p>
-    <label class="mdc-text-field mdc-text-field--filled username">
-      <span class="mdc-text-field__ripple"></span>
-      <input type="text" class="mdc-text-field__input" aria-labelledby="username-label" name="username" />
-      <span class="mdc-floating-label" id="username-label">Username</span>
-      <span class="mdc-line-ripple"></span>
-    </label>
-  </div>
+    <div *ngIf="user; else nouser">
+      <p>Username: {{ user.name }}</p>
+    </div>
 
-  <ng-template #nouser>
-    <div>You're not logged in yet...</div>
-    <button mat-button (click)="login()">Login</button>
-  </ng-template>
+    <ng-template #nouser>
+      <div>You're not logged in yet...</div>
+      <button mat-button (click)="login()">Login</button>
+    </ng-template>
+  </mat-sidenav-content>
 </mat-sidenav-container>
