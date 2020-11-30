@@ -1,6 +1,7 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 import { Logger } from './logger.service';
 import { Playlist, User } from './model';
 
@@ -26,7 +27,11 @@ export class DeezerService {
     }
 
     getPlaylists(): Observable<Playlist[]> {
-        return this.http.get<Playlist[]>(`${API_URL}/user/me/playlists`);
+        return this.http.get<Playlist[]>(`${API_URL}/user/me/playlists`)
+            .pipe(
+                tap(_ => this.logger.log('fetched playlists')),
+                catchError(this.handleError<Playlist[]>('getPlaylists', []))
+            );
     }
 
     getAccessToken(): string {
@@ -47,5 +52,17 @@ export class DeezerService {
             }
         });
         return cookieValue;
+    }
+
+    private handleError<T>(operation = 'operation', result?: T): (err: any) => Observable<T> {
+        return (error: any): Observable<T> => {
+            if (error.type === 'OAuthException') {
+                console.error('unauthorired');
+                // TODO: get new accessToken
+            }
+            this.logger.error(error);
+            this.logger.log(`${operation} failed: ${error.message}`);
+            return of(result as T);
+        };
     }
 }

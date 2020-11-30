@@ -34,8 +34,7 @@ export class AppComponent {
   }
 
   getPlaylists(): void {
-    this.deezer.getPlaylists().subscribe(playlists => {
-      console.log(playlists);
+    this.deezer.getPlaylists().subscribe((playlists: Playlist[]) => {
       this.playlists = playlists;
     });
   }

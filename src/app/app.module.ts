@@ -10,6 +10,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterModule } from '@angular/router';
 import { AppComponent } from './app.component';
+import { httpInterceptorProviders } from './http-interceptors/index';
 
 
 @NgModule({
@@ -30,7 +31,7 @@ import { AppComponent } from './app.component';
     MatIconModule,
     MatListModule,
   ],
-  providers: [],
+  providers: [httpInterceptorProviders],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
