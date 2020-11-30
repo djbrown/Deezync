@@ -3,7 +3,7 @@ import { Component } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map, shareReplay } from 'rxjs/operators';
 import { DeezerService } from './deezer.service';
-import { User } from './model';
+import { Playlist, User } from './model';
 
 @Component({
   selector: 'app-root',
@@ -13,6 +13,7 @@ import { User } from './model';
 export class AppComponent {
   title = 'deezync';
   user?: User;
+  playlists: Playlist[];
 
   isHandset$: Observable<boolean> = this.breakpointObserver.observe(Breakpoints.Handset)
     .pipe(
@@ -25,9 +26,17 @@ export class AppComponent {
     private deezer: DeezerService,
   ) {
     deezer.getUser().subscribe(user => this.user = user);
+    this.playlists = [];
   }
 
   login(): void {
     this.deezer.login();
+  }
+
+  getPlaylists(): void {
+    this.deezer.getPlaylists().subscribe(playlists => {
+      console.log(playlists);
+      this.playlists = playlists;
+    });
   }
 }

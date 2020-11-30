@@ -29,6 +29,11 @@
     </mat-toolbar>
     <div *ngIf="user; else nouser">
       <p>Username: {{ user.name }}</p>
+      <button mat-button (click)="getPlaylists()">Load playlists</button>
+      <h2>Playlists</h2>
+      <ul>
+        <li *ngFor="let playlist of playlists">{{ playlist.title }}</li>
+      </ul>
     </div>
 
     <ng-template #nouser>

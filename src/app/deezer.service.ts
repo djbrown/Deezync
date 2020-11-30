@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { Logger } from './logger.service';
 import { Playlist, User } from './model';
 
@@ -8,9 +8,7 @@ const API_URL = '/api';
 const BACKEND_URL = 'http://localhost:3000';
 
 
-@Injectable({
-    providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class DeezerService {
 
     constructor(
@@ -27,9 +25,8 @@ export class DeezerService {
         return this.http.get<User>(`${API_URL}/user/me?access_token=${accessToken}`);
     }
 
-    getUsersPlaylists(user: User): Playlist[] {
-        // return this.http.get<Playlist[]>(`${API_URL}/user/${user.id}/playlists`);
-        return [];
+    getPlaylists(): Observable<Playlist[]> {
+        return this.http.get<Playlist[]>(`${API_URL}/user/me/playlists`);
     }
 
     getAccessToken(): string {
