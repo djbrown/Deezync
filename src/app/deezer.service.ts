@@ -1,13 +1,16 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { Logger } from './logger.service';
 import { Playlist, User } from './model';
 
 const API_URL = '/api';
 const BACKEND_URL = 'http://localhost:3000';
 
+interface DataWrapper<T> {
+    data: T;
+}
 
 @Injectable({ providedIn: 'root' })
 export class DeezerService {
@@ -28,11 +31,26 @@ export class DeezerService {
 
     getPlaylists(): Observable<Playlist[]> {
         const accessToken = encodeURIComponent(this.getAccessToken());
-        return this.http.get<Playlist[]>(`${API_URL}/user/me/playlists?access_token=${accessToken}`)
+        return this.http.get<DataWrapper<Playlist[]>>(`${API_URL}/user/me/playlists?access_token=${accessToken}`)
             .pipe(
-                tap(_ => this.logger.log('fetched playlists')),
+                map((res: DataWrapper<Playlist[]>) => {
+                    this.logger.log(res.data);
+                    // todo max page size
+                    // todo pagination
+                    return res.data.sort(this.comparePlaylists);
+                }),
                 catchError(this.handleError<Playlist[]>('getPlaylists', []))
             );
+    }
+
+    private comparePlaylists(a: Playlist, b: Playlist): number {
+        if (a.title < b.title) {
+            return -1;
+        }
+        if (a.title > b.title) {
+            return 1;
+        }
+        return 0;
     }
 
     getAccessToken(): string {
