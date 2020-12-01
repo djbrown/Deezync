@@ -1,5 +1,3 @@
-import { Optional } from '@angular/core';
-
 export interface Album {
     id: number;
     title: string;
