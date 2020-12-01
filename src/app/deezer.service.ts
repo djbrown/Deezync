@@ -27,7 +27,8 @@ export class DeezerService {
     }
 
     getPlaylists(): Observable<Playlist[]> {
-        return this.http.get<Playlist[]>(`${API_URL}/user/me/playlists`)
+        const accessToken = encodeURIComponent(this.getAccessToken());
+        return this.http.get<Playlist[]>(`${API_URL}/user/me/playlists?access_token=${accessToken}`)
             .pipe(
                 tap(_ => this.logger.log('fetched playlists')),
                 catchError(this.handleError<Playlist[]>('getPlaylists', []))
@@ -36,22 +37,23 @@ export class DeezerService {
 
     getAccessToken(): string {
         const accessToken = this.getCookie('accessToken');
-        if (accessToken) {
-            return accessToken;
-        } else {
-            this.login();
-            throw new Error('login not working');
+        const expires = this.getCookie('expires');
+        if (accessToken && expires) {
+            const expirationMillis = Date.parse(expires.substring(3, 27));
+            if (expirationMillis > Date.now()) {
+                return accessToken;
+            }
         }
+        this.login();
+        return '';
     }
 
     private getCookie(cookieName: string): string | null {
-        let cookieValue: string | null = null;
-        document.cookie.split('; ').forEach((cookieLine: string) => {
-            if (cookieLine.startsWith(`${cookieName}=`)) {
-                cookieValue = cookieValue || cookieLine.split('=')[1];
-            }
-        });
-        return cookieValue;
+        const cookieLine = document.cookie.split('; ')
+            .find((line: string) =>
+                line.startsWith(`${cookieName}=`)
+            );
+        return decodeURIComponent(cookieLine?.split('=')[1] || '') || null;
     }
 
     private handleError<T>(operation = 'operation', result?: T): (err: any) => Observable<T> {
