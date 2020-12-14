@@ -20,24 +20,31 @@ export class DeezerService {
         private http: HttpClient,
     ) { }
 
+    private user!: User;
+
     login(): void {
         window.location.href = `${BACKEND_URL}/login`;
     }
 
     getUser(): Observable<User> {
+        if (this.user) {
+            return of(this.user);
+        }
         const accessToken = encodeURIComponent(this.getAccessToken());
-        return this.http.get<User>(`${API_URL}/user/me?access_token=${accessToken}`);
+        const $user = this.http.get<User>(`${API_URL}/user/me?access_token=${accessToken}`);
+        $user.subscribe(user => this.user = user);
+        return $user;
     }
 
     getPlaylists(): Observable<Playlist[]> {
         const accessToken = encodeURIComponent(this.getAccessToken());
-        return this.http.get<DataWrapper<Playlist[]>>(`${API_URL}/user/me/playlists?access_token=${accessToken}`)
+        // todo pagination
+        return this.http.get<DataWrapper<Playlist[]>>(`${API_URL}/user/me/playlists?access_token=${accessToken}&limit=200`)
             .pipe(
                 map((res: DataWrapper<Playlist[]>) => {
-                    this.logger.log(res.data);
-                    // todo max page size
-                    // todo pagination
-                    return res.data.sort(this.comparePlaylists);
+                    return res.data
+                        .filter(playlist => playlist.creator.id === this.user.id)
+                        .sort(this.comparePlaylists);
                 }),
                 catchError(this.handleError<Playlist[]>('getPlaylists', []))
             );
