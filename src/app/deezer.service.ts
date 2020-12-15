@@ -50,6 +50,7 @@ export class DeezerService {
             }),
             reduce((acc: Playlist[], res: DataWrapper<Playlist[]>) => acc.concat(res.data), []),
             map(playlists => playlists.filter(playlist => playlist.creator.id === this.user.id)),
+            map(playlists => playlists.filter(playlist => playlist.is_loved_track || playlist.title.startsWith('.'))),
             map(playlists => playlists.sort((a, b) => a.title.localeCompare(b.title))),
             tap(playlists => playlists.forEach(playlist => {
                 this.getTracks(playlist).subscribe(tracks => playlist.tracks = tracks);
