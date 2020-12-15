@@ -30,6 +30,18 @@
     <div *ngIf="user; else nouser">
       <p>Username: {{ user.name }}</p>
       <button mat-button (click)="getPlaylists()">Load playlists</button>
+      <button mat-button (click)="findDuplicates()">Find duplicates</button>
+      <h2>Duplicates</h2>
+      <ul>
+        <li *ngFor="let duplicate of duplicates">
+          {{ duplicate[0].artist.name }} - <a href="{{ duplicate[0].link }}">{{ duplicate[0].title }}</a>
+          <ul>
+            <li *ngFor="let playlist of duplicate[1]">
+              <a href="{{ playlist.link }}">{{ playlist.title }}</a>
+            </li>
+          </ul>
+        </li>
+      </ul>
       <h2>Playlists</h2>
       <mat-accordion class="headers-align">
         <mat-expansion-panel *ngFor="let playlist of playlists">
