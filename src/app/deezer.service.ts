@@ -1,7 +1,7 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { EMPTY, Observable, of } from 'rxjs';
+import { catchError, expand, map, reduce } from 'rxjs/operators';
 import { Logger } from './logger.service';
 import { Playlist, User } from './model';
 
@@ -10,6 +10,7 @@ const BACKEND_URL = 'http://localhost:3000';
 
 interface DataWrapper<T> {
     data: T;
+    next?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,17 +38,32 @@ export class DeezerService {
     }
 
     getPlaylists(): Observable<Playlist[]> {
+        return this.fetchPlaylists().pipe(
+            expand((res: DataWrapper<Playlist[]>) => {
+                if (res.next) {
+                    const next = new URL(res.next);
+                    const index = Number(next.searchParams.get('index'));
+                    const limit = Number(next.searchParams.get('limit'));
+                    return this.fetchPlaylists(index, limit);
+                }
+                return EMPTY;
+            }),
+            reduce((acc: Playlist[], res: DataWrapper<Playlist[]>) => acc.concat(res.data), []),
+            map((playlists: Playlist[]) => {
+                return playlists
+                    .filter(playlist => playlist.creator.id === this.user.id)
+                    .sort(this.comparePlaylists);
+            }),
+        );
+    }
+
+    private fetchPlaylists(index = 0, limit = 10): Observable<DataWrapper<Playlist[]>> {
         const accessToken = encodeURIComponent(this.getAccessToken());
-        // todo pagination
-        return this.http.get<DataWrapper<Playlist[]>>(`${API_URL}/user/me/playlists?access_token=${accessToken}&limit=200`)
-            .pipe(
-                map((res: DataWrapper<Playlist[]>) => {
-                    return res.data
-                        .filter(playlist => playlist.creator.id === this.user.id)
-                        .sort(this.comparePlaylists);
-                }),
-                catchError(this.handleError<Playlist[]>('getPlaylists', []))
-            );
+        const url = `${API_URL}/user/me/playlists?access_token=${accessToken}&limit=${limit}&index=${index}`;
+        const params = new HttpParams();
+        return this.http.get<DataWrapper<Playlist[]>>(url, { params }).pipe(
+            catchError(this.handleError<DataWrapper<Playlist[]>>('getPlaylists', { data: [] }))
+        );
     }
 
     private comparePlaylists(a: Playlist, b: Playlist): number {
