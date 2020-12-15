@@ -78,7 +78,7 @@ export class DeezerService {
                 return EMPTY;
             }),
             reduce((acc: Track[], res: DataWrapper<Track[]>) => acc.concat(res.data), []),
-            map(tracks => tracks.sort((a, b) => a.title.localeCompare(b.title))),
+            map(tracks => tracks.sort((a, b) => a.artist.name.localeCompare(b.artist.name))),
         );
     }
 
