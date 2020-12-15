@@ -34,11 +34,15 @@
       <mat-accordion class="headers-align">
         <mat-expansion-panel *ngFor="let playlist of playlists">
           <mat-expansion-panel-header>
-            <mat-panel-title>{{ playlist.title }}</mat-panel-title>
-            <mat-panel-description>{{ playlist.tracks.length }} Tracks</mat-panel-description>
+            <mat-panel-title>
+              <a href="{{ playlist.link }}">{{ playlist.title }}</a>
+            </mat-panel-title>
+            <mat-panel-description>{{ playlist.tracks?.length }} Tracks</mat-panel-description>
           </mat-expansion-panel-header>
           <ul>
-            <li *ngFor="let track of playlist.tracks">{{ track.title }}</li>
+            <li *ngFor="let track of playlist.tracks">
+              {{ track.artist.name }} - <a href="{{ track.link }}">{{ track.title }}</a>
+            </li>
           </ul>
         </mat-expansion-panel>
       </mat-accordion>

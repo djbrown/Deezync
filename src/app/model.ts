@@ -15,6 +15,8 @@ export interface Playlist {
     title: string;
     creator: User;
     tracks: Track[];
+    link: string;
+    is_loved_track: boolean;
 }
 
 export interface Track {
@@ -22,6 +24,7 @@ export interface Track {
     title: string;
     artist: Artist;
     album: Album;
+    link: string;
 }
 
 export interface User {
