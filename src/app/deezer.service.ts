@@ -1,9 +1,9 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { EMPTY, Observable, of } from 'rxjs';
-import { catchError, expand, map, reduce } from 'rxjs/operators';
+import { catchError, expand, map, reduce, tap } from 'rxjs/operators';
 import { Logger } from './logger.service';
-import { Playlist, User } from './model';
+import { Playlist, Track, User } from './model';
 
 const API_URL = '/api';
 const BACKEND_URL = 'http://localhost:3000';
@@ -54,15 +54,20 @@ export class DeezerService {
                     .filter(playlist => playlist.creator.id === this.user.id)
                     .sort(this.comparePlaylists);
             }),
+            tap((playlists: Playlist[]) => {
+                playlists.forEach(playlist => {
+                    this.getTracks(playlist).subscribe(tracks => playlist.tracks = tracks);
+                });
+            })
         );
     }
 
-    private fetchPlaylists(index = 0, limit = 10): Observable<DataWrapper<Playlist[]>> {
+    private fetchPlaylists(index = 0, limit = 100): Observable<DataWrapper<Playlist[]>> {
         const accessToken = encodeURIComponent(this.getAccessToken());
         const url = `${API_URL}/user/me/playlists?access_token=${accessToken}&limit=${limit}&index=${index}`;
         const params = new HttpParams();
         return this.http.get<DataWrapper<Playlist[]>>(url, { params }).pipe(
-            catchError(this.handleError<DataWrapper<Playlist[]>>('getPlaylists', { data: [] }))
+            catchError(this.handleError<DataWrapper<Playlist[]>>('fetchPlaylists', { data: [] }))
         );
     }
 
@@ -76,7 +81,42 @@ export class DeezerService {
         return 0;
     }
 
-    getAccessToken(): string {
+    getTracks(playlist: Playlist): Observable<Track[]> {
+        return this.fetchTracks(playlist).pipe(
+            expand((res: DataWrapper<Track[]>) => {
+                if (res.next) {
+                    const next = new URL(res.next);
+                    const index = Number(next.searchParams.get('index'));
+                    const limit = Number(next.searchParams.get('limit'));
+                    return this.fetchTracks(playlist, index, limit);
+                }
+                return EMPTY;
+            }),
+            reduce((acc: Track[], res: DataWrapper<Track[]>) => acc.concat(res.data), []),
+            map((playlists: Track[]) => playlists.sort(this.compareTracks)),
+        );
+    }
+
+    private fetchTracks(playlist: Playlist, index = 0, limit = 1000): Observable<DataWrapper<Track[]>> {
+        const accessToken = encodeURIComponent(this.getAccessToken());
+        const url = `${API_URL}/playlist/${playlist.id}/tracks?access_token=${accessToken}&limit=${limit}&index=${index}`;
+        const params = new HttpParams();
+        return this.http.get<DataWrapper<Track[]>>(url, { params }).pipe(
+            catchError(this.handleError<DataWrapper<Track[]>>('fetchTracks', { data: [] }))
+        );
+    }
+
+    private compareTracks(a: Track, b: Track): number {
+        if (a.title < b.title) {
+            return -1;
+        }
+        if (a.title > b.title) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private getAccessToken(): string {
         const accessToken = this.getCookie('accessToken');
         const expires = this.getCookie('expires');
         if (accessToken && expires) {

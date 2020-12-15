@@ -35,9 +35,11 @@
         <mat-expansion-panel *ngFor="let playlist of playlists">
           <mat-expansion-panel-header>
             <mat-panel-title>{{ playlist.title }}</mat-panel-title>
-            <mat-panel-description>{{ playlist.nb_tracks }} Tracks</mat-panel-description>
+            <mat-panel-description>{{ playlist.tracks.length }} Tracks</mat-panel-description>
           </mat-expansion-panel-header>
-          <p>I'm visible because I am open</p>
+          <ul>
+            <li *ngFor="let track of playlist.tracks">{{ track.title }}</li>
+          </ul>
         </mat-expansion-panel>
       </mat-accordion>
     </div>
