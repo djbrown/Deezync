@@ -49,16 +49,11 @@ export class DeezerService {
                 return EMPTY;
             }),
             reduce((acc: Playlist[], res: DataWrapper<Playlist[]>) => acc.concat(res.data), []),
-            map((playlists: Playlist[]) => {
-                return playlists
-                    .filter(playlist => playlist.creator.id === this.user.id)
-                    .sort(this.comparePlaylists);
-            }),
-            tap((playlists: Playlist[]) => {
-                playlists.forEach(playlist => {
-                    this.getTracks(playlist).subscribe(tracks => playlist.tracks = tracks);
-                });
-            })
+            map(playlists => playlists.filter(playlist => playlist.creator.id === this.user.id)),
+            map(playlists => playlists.sort((a, b) => a.title.localeCompare(b.title))),
+            tap(playlists => playlists.forEach(playlist => {
+                this.getTracks(playlist).subscribe(tracks => playlist.tracks = tracks);
+            })),
         );
     }
 
@@ -69,16 +64,6 @@ export class DeezerService {
         return this.http.get<DataWrapper<Playlist[]>>(url, { params }).pipe(
             catchError(this.handleError<DataWrapper<Playlist[]>>('fetchPlaylists', { data: [] }))
         );
-    }
-
-    private comparePlaylists(a: Playlist, b: Playlist): number {
-        if (a.title < b.title) {
-            return -1;
-        }
-        if (a.title > b.title) {
-            return 1;
-        }
-        return 0;
     }
 
     getTracks(playlist: Playlist): Observable<Track[]> {
@@ -93,7 +78,7 @@ export class DeezerService {
                 return EMPTY;
             }),
             reduce((acc: Track[], res: DataWrapper<Track[]>) => acc.concat(res.data), []),
-            map((playlists: Track[]) => playlists.sort(this.compareTracks)),
+            map(tracks => tracks.sort((a, b) => a.title.localeCompare(b.title))),
         );
     }
 
@@ -104,16 +89,6 @@ export class DeezerService {
         return this.http.get<DataWrapper<Track[]>>(url, { params }).pipe(
             catchError(this.handleError<DataWrapper<Track[]>>('fetchTracks', { data: [] }))
         );
-    }
-
-    private compareTracks(a: Track, b: Track): number {
-        if (a.title < b.title) {
-            return -1;
-        }
-        if (a.title > b.title) {
-            return 1;
-        }
-        return 0;
     }
 
     private getAccessToken(): string {
